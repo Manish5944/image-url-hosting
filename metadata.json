@@ -1,0 +1,5 @@
+{
+  "name": "Image to URL Converter",
+  "description": "Upload images and get permanent URLs to use anywhere.",
+  "requestFramePermissions": []
+}
