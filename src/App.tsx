@@ -18,6 +18,7 @@ import {
   getDocs, 
   deleteDoc, 
   doc, 
+  getDoc,
   orderBy,
   serverTimestamp,
   setDoc
@@ -77,12 +78,40 @@ export default function App() {
       }
     });
 
-    if (window.location.hostname.includes("ais-dev-")) {
+    // Check for direct image redirect
+    const params = new URLSearchParams(window.location.search);
+    const imageId = params.get("id");
+    if (imageId) {
+      handleRedirect(imageId);
+    }
+
+    if (window.location.hostname.includes("ais-dev-") || window.location.hostname.includes("localhost")) {
       setIsDevMode(true);
     }
 
     return () => unsubscribe();
   }, [view]);
+
+  const handleRedirect = async (id: string) => {
+    setIsAuthLoading(true);
+    try {
+      const docRef = doc(db, "images", id);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        // Redirect to the actual image URL
+        window.location.href = data.url;
+      } else {
+        setError("Image not found or has been deleted.");
+        setIsAuthLoading(false);
+        setView("home");
+      }
+    } catch (err) {
+      console.error("Redirect failed", err);
+      setIsAuthLoading(false);
+      setView("home");
+    }
+  };
 
   const handleGoogleLogin = async () => {
     setError(null);
@@ -425,21 +454,40 @@ export default function App() {
                 {result ? (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
                     <div className="bg-white rounded-[2rem] p-10 shadow-xl shadow-black/5 border border-[#141414]/5 space-y-8">
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <label className="text-[10px] uppercase tracking-[0.2em] font-bold opacity-40">Direct Link</label>
-                          {copied && <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">Copied!</span>}
-                        </div>
-                        <div className="relative group">
-                          <div className="w-full bg-[#F5F5F0] rounded-2xl p-5 pr-14 text-[11px] font-mono break-all leading-relaxed">
-                            {result.url}
+                      <div className="space-y-6">
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <label className="text-[10px] uppercase tracking-[0.2em] font-bold opacity-40">Shareable Link (Hosted)</label>
+                            {copied && <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">Copied!</span>}
                           </div>
-                          <button 
-                            onClick={() => copyToClipboard(result.url)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl hover:bg-white transition-colors flex items-center justify-center"
-                          >
-                            <Copy size={16} className="opacity-40" />
-                          </button>
+                          <div className="relative group">
+                            <div className="w-full bg-[#F5F5F0] rounded-2xl p-5 pr-14 text-[11px] font-mono break-all leading-relaxed">
+                              {`${window.location.origin}/?id=${result.id}`}
+                            </div>
+                            <button 
+                              onClick={() => copyToClipboard(`${window.location.origin}/?id=${result.id}`)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl hover:bg-white transition-colors flex items-center justify-center"
+                            >
+                              <Copy size={16} className="opacity-40" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <label className="text-[10px] uppercase tracking-[0.2em] font-bold opacity-40">Direct Firebase URL</label>
+                          </div>
+                          <div className="relative group">
+                            <div className="w-full bg-[#F5F5F0]/50 rounded-2xl p-5 pr-14 text-[11px] font-mono break-all leading-relaxed opacity-60">
+                              {result.url}
+                            </div>
+                            <button 
+                              onClick={() => copyToClipboard(result.url)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl hover:bg-white transition-colors flex items-center justify-center"
+                            >
+                              <Copy size={16} className="opacity-40" />
+                            </button>
+                          </div>
                         </div>
                       </div>
 
@@ -471,7 +519,7 @@ export default function App() {
                         <div className="space-y-2">
                           <p className="text-[10px] font-bold uppercase tracking-widest text-[#5A5A40]">HTML Snippet</p>
                           <div className="bg-white/5 p-4 rounded-xl text-[10px] font-mono opacity-80 break-all">
-                            {`<img src="${result.url}" alt="Hosted Image" />`}
+                            {`<img src="${window.location.origin}/?id=${result.id}" alt="Hosted Image" />`}
                           </div>
                         </div>
                       </div>
